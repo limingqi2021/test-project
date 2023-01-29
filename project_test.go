@@ -9,12 +9,6 @@ import (
 	"time"
 )
 
-func main() {
-	//TestMysql(nil)
-	//TestTime()
-	//TestStruct()
-}
-
 type Person struct {
 	Name string
 	Age  int64
@@ -113,13 +107,14 @@ func TestGoroutine(t *testing.T) {
 	waitGroup.Wait()
 }
 
-// 在 Go 中引入枚举的标准方法是声明一个自定义类型和一个使用了 iota 的 const 组。
-// 由于变量的默认值为 0，因此通常应以非零值开头枚举。
+// 在 Go 中引入枚举的标准方法是声明一个自定义类型和一个使用了 iota 的 const 组
+// 由于变量的默认值为 0，因此通常应以非零值开头枚举
+type Operation int
+
 const (
-	a = iota + 1
-	b = "add"
-	c = iota
-	d
+	ADD Operation = iota + 1
+	Subtract
+	Multiply
 )
 
 func TestEnum(t *testing.T) {
