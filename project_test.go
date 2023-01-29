@@ -4,15 +4,40 @@ import (
 	"fmt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"sync"
+	"testing"
 	"time"
 )
 
 func main() {
-	testMysql()
-	//testTime()
+	//TestMysql(nil)
+	//TestTime()
+	//TestStruct()
 }
 
-func testTime() {
+type Person struct {
+	Name string
+	Age  int64
+	Sex  bool
+}
+
+// 参数t用于报告测试失败和附加的日志信息
+func TestStruct(t *testing.T) {
+	var a Person
+	var b *Person
+	var c = new(Person)
+	var d = &Person{}
+	fmt.Println(a)
+	fmt.Println(b)
+	fmt.Println(c)
+	fmt.Println(d)
+	e := ""
+	fmt.Println(e == a.Name)
+	//fmt.Fprintf(os.Stdout, "an %s\n", "error")
+	//os.Create("ts.txt")
+}
+
+func TestTime(t *testing.T) {
 	// time.Parse UTC 标准时区
 	// time.ParseInLocation CST 北京时区（time.Local）
 	begin1 := "2023-01-18"
@@ -36,7 +61,7 @@ type RecallUsers struct {
 	UpdatedAt time.Time `json:"updated_at" form:"updated_at"`     // 更新时间
 }
 
-func testMysql() []*RecallUsers {
+func TestMysql(t *testing.T) {
 	//配置MySQL连接参数
 	username := "root"       //账号
 	password := ""           //密码
@@ -54,17 +79,49 @@ func testMysql() []*RecallUsers {
 		panic("连接数据库失败, error=" + err.Error())
 	}
 
-	rows := make([]*RecallUsers, 0, 0)
-
-	memberId := 122343
-	err = db.Debug().Table("recall_users").Where("member_id=?", memberId).First(&rows).Error
+	//rows := make([]*RecallUsers, 0, 0)
+	var rows *RecallUsers
+	memberId := 1234
+	err = db.Debug().Table("recall_users").Where("member_id=?", memberId).Scan(&rows).Error
 	if err != nil {
 		fmt.Println("-----", err)
 	}
 
-	fmt.Println("连接一次数据库", err)
+	fmt.Println("连接一次数据库", rows)
 	//sqlDb, _ := db.DB()
 	//defer sqlDb.Close()
-	return rows
+}
+func TestGoroutine(t *testing.T) {
+	var waitGroup sync.WaitGroup
+	maxCount := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	num := 3
+	goroutineNum := len(maxCount) / num
+	for i := 0; i <= goroutineNum; i++ {
+		waitGroup.Add(1)
+		var testIds []int
+		if i == goroutineNum {
+			testIds = maxCount[(goroutineNum)*3:]
+		} else {
+			testIds = maxCount[i*3 : (i+1)*3]
+		}
+		go func() {
+			defer waitGroup.Done()
+			fmt.Println("--------", testIds)
+			time.Sleep(2 * time.Second)
+		}()
+	}
+	waitGroup.Wait()
+}
+
+// 在 Go 中引入枚举的标准方法是声明一个自定义类型和一个使用了 iota 的 const 组。
+// 由于变量的默认值为 0，因此通常应以非零值开头枚举。
+const (
+	a = iota + 1
+	b = "add"
+	c = iota
+	d
+)
+
+func TestEnum(t *testing.T) {
 
 }
