@@ -63,3 +63,8 @@ func testMysqlAndCache() {
 	//sqlDb, _ := db.DB()
 	//defer sqlDb.Close()
 }
+
+const (
+	_defaultPort = 8080
+	DefaultUser  = "user"
+)
