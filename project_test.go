@@ -184,19 +184,6 @@ func unpad(src []byte) ([]byte, error) {
 	return src[:(length - unpadding)], nil
 }
 
-type Handler struct {
-	// ...
-}
-
-func (h Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	//TODO implement me
-	panic("implement me")
-}
-
-// 用于触发编译期的接口的合理性检查机制
-// 如果 Handler 没有实现 http.Handler，会在编译期报错
-var _ http.Handler = (*Handler)(nil)
-
 // nil在概念上和其它语言的null、None、nil、NULL一样，都指代零值或空值。nil是预先说明的标识符，即通常意义上的关键字。
 // 在Golang中，nil只能赋值给指针、channel、func、interface、map或slice类型的变量
 // 不同类型的 nil 值占用的内存大小可能不一样
@@ -218,7 +205,20 @@ func TestNil(t *testing.T) {
 
 	var i interface{}
 	fmt.Println(unsafe.Sizeof(i)) // 16
-	if _defaultPort == 0 {
+}
 
-	}
+type MyError struct {
+}
+type Handler struct {
+}
+
+func (h *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func TestInterface(t *testing.T) {
+	var _ error = error(nil)
+	var _ *MyError = (*MyError)(nil)
+	var _ http.Handler = (*Handler)(nil)
 }

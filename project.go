@@ -64,6 +64,7 @@ func testMysqlAndCache() {
 	//defer sqlDb.Close()
 }
 
+// 在未导出的顶级vars和consts， 前面加上前缀_，以使它们在使用时明确表示它们是全局符号。
 const (
 	_defaultPort = 8080
 	DefaultUser  = "user"
