@@ -4,13 +4,18 @@ import (
 	"fmt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"sync"
 	"time"
 )
 
 func main() {
-	testMysqlAndCache()
-	time.Sleep(7 * time.Second)
-	testMysqlAndCache()
+	//testMysqlAndCache()
+	//time.Sleep(7 * time.Second)
+	//testMysqlAndCache()
+	//go InitTicker()
+	//time.Sleep(2 * time.Minute)
+	TestMap()
+	// testMysqlAndCache()
 }
 
 type Person struct {
@@ -28,16 +33,20 @@ type RecallUsers struct {
 }
 
 var InMemoryTime int64 //缓存时间
-var rows *RecallUsers
+
+var relations []string
 
 func testMysqlAndCache() {
+	// 读写sync.map
 	nowUnix := time.Now().Unix()
-	if rows != nil {
+	fmt.Println("----", len(relations))
+	if relations != nil {
 		if nowUnix-InMemoryTime < 5 {
-			fmt.Println("cache", rows)
+			fmt.Println("cache", relations)
 			return
 		}
 	}
+	//var rows []*RecallUsers
 	//配置MySQL连接参数
 	username := "root"       //账号
 	password := ""           //密码
@@ -53,13 +62,23 @@ func testMysqlAndCache() {
 	if err != nil {
 		panic("连接数据库失败, error=" + err.Error())
 	}
-	memberId := 1234
-	err = db.Debug().Table("recall_users").Where("member_id=?", memberId).Scan(&rows).Error
-	if err != nil {
-		fmt.Println("-----", err)
-	}
-	InMemoryTime = time.Now().Unix()
-	fmt.Println("第一次连接数据库", rows)
+	//memberId := 1234
+	//InMemoryTime = time.Now().Unix()
+	//err = db.Debug().Table("recall_users").Where("member_id=?", memberId).Scan(&rows).Error
+	//if err != nil {
+	//	fmt.Println("-----", err)
+	//}
+	//for _, v := range rows {
+	//	relation := fmt.Sprintf("%d_", v.TargetId)
+	//	relations = append(relations, relation)
+	//}
+
+	// 测试sql注入
+	tt := "'mmmm'-- &@#'"
+	//sql := fmt.Sprintf("update recall_users set nickname = %s where id = 1", "'ffff'-- &@#'")
+	sql := "update recall_users set nickname = ? where id = 1"
+	err = db.Debug().Exec(sql, tt).Error
+	fmt.Println("第一次连接数据库", err)
 	//sqlDb, _ := db.DB()
 	//defer sqlDb.Close()
 }
@@ -69,3 +88,52 @@ const (
 	_defaultPort = 8080
 	DefaultUser  = "user"
 )
+
+func InitTicker() {
+	clearTimer := time.NewTicker(3 * time.Second)
+	defer clearTimer.Stop()
+
+	for {
+		<-clearTimer.C
+		printT()
+	}
+}
+func printT() {
+	fmt.Println("-------", time.Now().Unix())
+}
+
+type relationData struct {
+	RelationIds []string
+	StoreTime   int64
+}
+
+func TestMap() {
+	var a sync.Map
+	t1 := &relationData{
+		RelationIds: []string{"5018700_3_6", "5017728_2_3", "5018701_0_0"},
+		StoreTime:   1675777933,
+	}
+	a.Store(124, t1)
+	a.Store(123, t1)
+	//a.Range(func(key,value interface{})) bool {
+	//
+	//	return true
+	//}
+	a.Range(func(key, value interface{}) bool {
+		if v, ok := value.(*relationData); ok {
+			fmt.Println(v.StoreTime)
+		}
+		return true
+	})
+	fmt.Printf("%.4f%%", float64(34/10000)*100)
+	//t2, _ := a.Load(124)
+	//t3, ok := t2.(*relationData)
+	//if !ok {
+	//	fmt.Println("不匹配")
+	//}
+	//fmt.Println(t3.RelationIds)
+
+	//var res relationData
+	//tTemp1, _ := json.Marshal(ttt)
+	//_ = json.Unmarshal(tTemp1, &res)
+}

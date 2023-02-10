@@ -1,16 +1,10 @@
 package main
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/sha256"
-	"encoding/hex"
-	"errors"
 	"fmt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"net/http"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -23,12 +17,14 @@ func TestStruct(t *testing.T) {
 	var b *Person
 	var c = new(Person)
 	var d = &Person{}
-	fmt.Println(a)
-	fmt.Println(b)
-	fmt.Println(c)
-	fmt.Println(d)
-	e := ""
-	fmt.Println(e == a.Name)
+	e := Person{}
+	fmt.Println("a", a)
+	fmt.Println("b", b)
+	fmt.Println("c", c)
+	fmt.Println("d", d)
+	fmt.Println("f", e)
+	f := ""
+	fmt.Println(f == a.Name)
 	//fmt.Fprintf(os.Stdout, "an %s\n", "error")
 	//os.Create("ts.txt")
 }
@@ -50,7 +46,10 @@ func TestTime(t *testing.T) {
 	now := time.Now()
 	nowDay := now.Add(2 * time.Hour)
 	nowDay2 := now.AddDate(0, 0, 1)
-
+	fmt.Println("----------")
+	dd := time.Unix(time.Now().Unix()-2, 0).String()
+	fmt.Println(dd)
+	fmt.Println("----------")
 	fmt.Println("yyyy-MM-dd HH:mm:ss", now.Format("2006-01-02 15:04:03"))
 	fmt.Println("yyyy-MM-dd HH:mm:ss", now.Format("2006-01-02 15:04:05"))
 	fmt.Println("yyyy-MM-dd HH:mm:ss", now.Format("2006-01-04 15:04:05"))
@@ -74,9 +73,14 @@ func TestMysql(t *testing.T) {
 	if err != nil {
 		panic("连接数据库失败, error=" + err.Error())
 	}
-	var res *RecallUsers
+	var res []RecallUsers
 	memberId := 1234
-	err = db.Debug().Table("recall_users").Where("member_id=?", memberId).Scan(&res).Error
+
+	//err = db.Debug().Table("recall_users").Where("member_id=?", memberId).Order("target_id desc").Limit(1).Scan(&res).Error
+	tt := time.Unix(time.Now().Unix()-2, 0)
+	timestamp := time.Now().Add(-2 * time.Second)
+	fmt.Println("timestamp", timestamp, "tt", tt)
+	err = db.Debug().Raw("select * from recall_users where member_id = ? and created_at < ? limit 3", memberId, tt).Scan(&res).Error
 	if err != nil {
 		fmt.Println("-----", err)
 	}
@@ -117,73 +121,6 @@ const (
 	Multiply
 )
 
-const (
-	memberKey  = "AJ03lQmVmtomCfug"
-	zero       = "1e5673b2572af26a8364a50af84c7d2a"
-	productKey = "XRbLEgrUCLHh94qG"
-)
-
-var (
-	_member_key  = _sha256(memberKey)
-	_product_key = _sha256(productKey)
-	iv, _        = hex.DecodeString(zero)
-)
-
-func TestMemberDecrypt(t *testing.T) {
-	fmt.Println(MemberDecrypt("dd6afdd5866b15bd01f153665511b68b"))
-}
-
-func _sha256(content string) []byte {
-	h := sha256.New()
-	h.Write([]byte(content))
-	return h.Sum(nil)
-}
-
-func MemberDecrypt(id string) (retInt int, retError error) {
-	defer func() {
-		if panicErr := recover(); panicErr != nil {
-			retError = errors.New(fmt.Sprintf("%+v\n", panicErr))
-		}
-	}()
-	retInt, retError = decrypt(id, _member_key, iv)
-	return
-}
-
-func decrypt(id string, key []byte, iv []byte) (i int, err error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return i, err
-	}
-	cbc := cipher.NewCBCDecrypter(block, iv)
-	content, err := hex.DecodeString(id)
-	if err != nil {
-		return i, err
-	}
-	cbc.CryptBlocks(content, content)
-	result, err := unpad(content)
-	if err != nil {
-		return i, err
-	}
-	decrypt_id, err := strconv.Atoi(string(result))
-	if err != nil {
-		return i, err
-	}
-	return decrypt_id, err
-}
-func unpad(src []byte) ([]byte, error) {
-	length := len(src)
-	if length == 0 {
-		return []byte{}, errors.New("")
-	}
-	unpadding := int(src[length-1])
-
-	if unpadding > length {
-		return nil, errors.New("unpad error. This could happen when incorrect encryption key is used")
-	}
-
-	return src[:(length - unpadding)], nil
-}
-
 // nil在概念上和其它语言的null、None、nil、NULL一样，都指代零值或空值。nil是预先说明的标识符，即通常意义上的关键字。
 // 在Golang中，nil只能赋值给指针、channel、func、interface、map或slice类型的变量
 // 不同类型的 nil 值占用的内存大小可能不一样
@@ -193,7 +130,8 @@ func TestNil(t *testing.T) {
 
 	var s []int64
 	fmt.Println(unsafe.Sizeof(s)) // 24
-
+	fmt.Println(s)
+	fmt.Println(s == nil)
 	var m map[int]bool
 	fmt.Println(unsafe.Sizeof(m)) // 8
 
@@ -220,5 +158,11 @@ func (h *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 func TestInterface(t *testing.T) {
 	var _ error = error(nil)
 	var _ *MyError = (*MyError)(nil)
-	var _ http.Handler = (*Handler)(nil)
+	d := []int{1, 2, 3, 4, 5}
+	d = d[1:len(d)]
+	a, b := 12, 45
+	if a-b < 9 {
+
+	}
+	//var _ http.Handler = (*Handler)(nil)
 }
