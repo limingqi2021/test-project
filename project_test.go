@@ -73,7 +73,7 @@ func TestMysql(t *testing.T) {
 	if err != nil {
 		panic("连接数据库失败, error=" + err.Error())
 	}
-	var res []RecallUsers
+	var res []Users
 	memberId := 1234
 
 	//err = db.Debug().Table("recall_users").Where("member_id=?", memberId).Order("target_id desc").Limit(1).Scan(&res).Error
@@ -164,5 +164,31 @@ func TestInterface(t *testing.T) {
 	if a-b < 9 {
 
 	}
+	fmt.Printf("%.4f%%", float64(345)/float64(10000))
+	fmt.Println(float64(3432543545) / float64(1000450))
 	//var _ http.Handler = (*Handler)(nil)
+}
+
+func TestAtomic(t *testing.T) {
+	for i := 0; i < 100; i++ {
+		go HitCount()
+	}
+	time.Sleep(1 * time.Minute)
+}
+
+func TestArr(t *testing.T) {
+	ids := []int64{10112, 9714, 9187, 9987, 10147, 9109, 10022, 10070, 9799, 10043, 9291, 9723}
+	id := 10112
+	ids = RemoveIdFromIds(int64(id), ids)
+	fmt.Println(ids)
+}
+func RemoveIdFromIds(id int64, ids []int64) []int64 {
+	var arr []int64
+	for _, item := range ids {
+		if item != id {
+			arr = append(arr, item)
+		}
+	}
+	fmt.Println(arr)
+	return arr
 }
