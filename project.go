@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-func init() {
-	fmt.Println("init")
-}
+//func init() {
+//	fmt.Println("init")
+//}
 
 func main() {
 	//testMysqlAndCache()

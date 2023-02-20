@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"net/http"
@@ -57,6 +60,11 @@ func TestTime(t *testing.T) {
 	fmt.Println(nowDay2)
 }
 
+func TestSinceTime(t *testing.T) {
+	start := time.Now()
+	time.Sleep(2 * time.Second)
+	fmt.Println(time.Since(start))
+}
 func TestMysql(t *testing.T) {
 	//配置MySQL连接参数
 	username := "root"       //账号
@@ -64,10 +72,10 @@ func TestMysql(t *testing.T) {
 	host := "localhost"      //数据库地址，可以是Ip或者域名
 	port := 3306             //数据库端口
 	Dbname := "project_test" //数据库名
-	timeout := "10s"         //连接超时，10秒
+	//timeout := "10s"         //连接超时，10秒
 
 	//拼接下dsn参数, dsn格式可以参考上面的语法，这里使用Sprintf动态拼接dsn参数，因为一般数据库连接参数，我们都是保存在配置文件里面，需要从配置文件加载参数，然后拼接dsn。
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True&loc=Local&timeout=%s", username, password, host, port, Dbname, timeout)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local", username, password, host, port, Dbname)
 	//连接MYSQL, 获得DB类型实例，用于后面的数据库读写操作。
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -177,10 +185,20 @@ func TestAtomic(t *testing.T) {
 }
 
 func TestArr(t *testing.T) {
-	ids := []int64{10112, 9714, 9187, 9987, 10147, 9109, 10022, 10070, 9799, 10043, 9291, 9723}
-	id := 10112
-	ids = RemoveIdFromIds(int64(id), ids)
-	fmt.Println(ids)
+	//ids := []int64{10112, 9714, 9187, 9987, 10147, 9109, 10022, 10070, 9799, 10043, 9291, 9723}
+	//id := 10112
+	//ids = RemoveIdFromIds(int64(id), ids)
+	//fmt.Println(ids)
+	//id1 := reflect.ValueOf([]int64{1, 2, 3})
+	//id2 := reflect.ValueOf([]int64{3, 2, 3})
+	//id3 := reflect.AppendSlice(id1, id2)
+
+	// type rune = int32；官方对它的解释是：rune是类型int32的别名
+	// rune跟byte是 Go 语言中仅有的两个类型别名，专门用来处理字符
+	// 在 Go 语言中，字符可以被分成两种类型处理：对占 1 个字节的英文类字符，可以使用byte（或者unit8）
+	// 对占 1 ~ 4 个字节的其他字符，可以使用rune（或者int32），如中文、特殊符号等。
+	tt := "你好google"
+	fmt.Println(string([]rune(tt)[:3]))
 }
 func RemoveIdFromIds(id int64, ids []int64) []int64 {
 	var arr []int64
@@ -191,4 +209,73 @@ func RemoveIdFromIds(id int64, ids []int64) []int64 {
 	}
 	fmt.Println(arr)
 	return arr
+}
+
+func TestDefer(t *testing.T) {
+	sumFunc := lazySum([]int{1, 2, 3, 4, 5})
+	fmt.Println("等待一会")
+	fmt.Println("结果：", sumFunc())
+
+}
+func lazySum(arr []int) func() int {
+	fmt.Println("先获取函数，不求结果")
+	var sum = func() int {
+		fmt.Println("求结果...")
+		result := 0
+		for _, v := range arr {
+			result = result + v
+		}
+		return result
+	}
+	return sum
+}
+
+type MsgTimestamp struct {
+	ExpirationTimestamp int64 `json:"expiration_timestamp"`
+}
+
+func TestJsonMarshal(t *testing.T) {
+	content := make(map[string]interface{})
+	content["msgType"] = "GET_FLOW_CARD"
+	content["flow_card_desc"] = fmt.Sprintf("使用%d分钟内获得额外人气", 1800/60)
+	content["expiration_timestamp"] = 100000000 + int64(3*3600)
+	msgContent, err := json.Marshal(content)
+	if err != nil {
+		fmt.Println(err)
+	}
+	tt := string(msgContent)
+	var msgRes MsgTimestamp
+	err = json.Unmarshal([]byte(tt), &msgRes)
+	if err != nil {
+		fmt.Println(err)
+	}
+	now := time.Now().Unix()
+	fmt.Println(msgRes.ExpirationTimestamp)
+	if msgRes.ExpirationTimestamp < now {
+		fmt.Println(msgRes.ExpirationTimestamp)
+		fmt.Println(now)
+	}
+}
+func TestRedis(t *testing.T) {
+	ctx := context.Background()
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // 没有密码，默认值
+		DB:       0,  // 默认DB 0
+	})
+	content := make(map[string]interface{})
+	content["msgType"] = "GET_FLOW_CARD"
+	content["flow_card_desc"] = fmt.Sprintf("使用%d分钟内获得额外人气", 1800/60)
+	content["expiration_timestamp"] = 100000000 + int64(3*3600)
+	msgContent, _ := json.Marshal(content)
+	err := rdb.HSet(ctx, "fixcard", 1234, 2345, string(msgContent))
+	if err != nil {
+
+	}
+	result := rdb.HGetAll(ctx, "1234")
+	fmt.Println(result)
+	for _, v := range result.Val() {
+		fmt.Println(v)
+	}
+
 }
