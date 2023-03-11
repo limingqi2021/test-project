@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -23,7 +22,8 @@ func main() {
 	//for i := 0; i < 100; i++ {
 	//	go HitCount()
 	//}
-	fmt.Println("main")
+	testMysqlAndCache()
+	//fmt.Println("main")
 }
 
 var count int64
@@ -69,6 +69,7 @@ type Person struct {
 type Users struct {
 	Id        int64     `json:"id" form:"id" validate:"required"`             // id
 	MemberId  int64     `json:"member_id" form:"member_id"`                   // 用户id
+	StartAt   time.Time `gorm:"column:start_at;NOT NULL" json:"start_at"`     // 开始时间
 	CreatedAt time.Time `gorm:"column:created_at;NOT NULL" json:"created_at"` // 创建时间
 	UpdatedAt time.Time `gorm:"column:updated_at;NOT NULL" json:"updated_at"` // 更新时间
 }
@@ -116,12 +117,19 @@ func testMysqlAndCache() {
 	// 在更新时保存其 Associations, 如果你不想调用这些方法，你可以使用 UpdateColumn， UpdateColumns
 	// 如果一个 model 有 DeletedAt 字段，他将自动获得软删除的功能！
 	//当调用 Delete 方法时， 记录不会真正的从数据库中被删除， 只会将DeletedAt 字段的值会被设置为当前时间
-	err = db.Debug().Model(&Users{}).Table("users").Where("id = 1").Updates(map[string]interface{}{"member_id": 8080}).Error
+	// err = db.Debug().Model(&Users{}).Table("users").Where("id = 1").Updates(map[string]interface{}{"member_id": 8080}).Error
+	var res Users
+	err = db.Debug().Table("users").Where("id = 1").Scan(&res).Error
 	if err != nil {
 		fmt.Println(err)
 	}
-	errors.Is(err, gorm.ErrRecordNotFound)
-	fmt.Println("第一次连接数据库", err)
+	fmt.Println(res)
+	fmt.Println(res.StartAt)
+	if res.StartAt.IsZero() {
+		fmt.Println(res.StartAt.IsZero())
+	}
+	//errors.Is(err, gorm.ErrRecordNotFound)
+	//fmt.Println("第一次连接数据库", err)
 	//sqlDb, _ := db.DB()
 	//defer sqlDb.Close()
 
@@ -151,6 +159,7 @@ type relationData struct {
 	StoreTime   int64
 }
 
+// sdfjsf
 func TestMap() {
 	var a sync.Map
 	t1 := &relationData{

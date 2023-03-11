@@ -4,10 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/redis/go-redis/v9"
+	"github.com/garyburd/redigo/redis"
+	goredis "github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"net/http"
+	"os"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -64,6 +68,15 @@ func TestSinceTime(t *testing.T) {
 	start := time.Now()
 	time.Sleep(2 * time.Second)
 	fmt.Println(time.Since(start))
+	s := time.Now().Format("2006-01-02 15:04:05")
+	tt, _ := time.Parse("2006-01-02 15:04:05", s)
+	fmt.Println(s)
+	fmt.Println(tt)
+	fmt.Println("******1*****")
+	var ttt time.Time
+	fmt.Println(ttt)
+	fmt.Println(ttt.IsZero())
+
 }
 func TestMysql(t *testing.T) {
 	//配置MySQL连接参数
@@ -215,8 +228,8 @@ func TestDefer(t *testing.T) {
 	sumFunc := lazySum([]int{1, 2, 3, 4, 5})
 	fmt.Println("等待一会")
 	fmt.Println("结果：", sumFunc())
-
 }
+
 func lazySum(arr []int) func() int {
 	fmt.Println("先获取函数，不求结果")
 	var sum = func() int {
@@ -232,6 +245,11 @@ func lazySum(arr []int) func() int {
 
 type MsgTimestamp struct {
 	ExpirationTimestamp int64 `json:"expiration_timestamp"`
+}
+
+type ReceptionSetting struct {
+	LocationIdStr  string `json:"location_id"`
+	ReceptionScene int64  `json:"reception_scene"`
 }
 
 func TestJsonMarshal(t *testing.T) {
@@ -255,10 +273,38 @@ func TestJsonMarshal(t *testing.T) {
 		fmt.Println(msgRes.ExpirationTimestamp)
 		fmt.Println(now)
 	}
+	//var res MsgTimestamp
+	//ttt := ""
+	//err = json.Unmarshal([]byte(ttt), &res)
+	//if err != nil {
+	//	panic(err)
+	//}
+	fmt.Println("---------1----------")
+
+	var res ReceptionSetting
+	value := `{"location_id":"11","reception_scene":1}`
+
+	_ = json.Unmarshal([]byte(value), &res)
+	locationIdStr := strings.Split(res.LocationIdStr, ",")
+	var locationIdsTemp []int32
+	for _, v := range locationIdStr {
+		locationIdTemp, _ := strconv.Atoi(v)
+		locationIdsTemp = append(locationIdsTemp, int32(locationIdTemp))
+	}
+	fmt.Println(locationIdsTemp)
+	fmt.Println(res.ReceptionScene)
+	fmt.Println(res)
+	fmt.Println("---------2----------")
+	fmt.Println(strings.Fields("hello widuu golang"))
 }
+
+// EX second：设置键的过期时间为 second 秒。SET key value EX second 效果等同于 SETEX key second value。
+// PX millisecond：设置键的过期时间为毫秒。SET key value PX millisecond 效果等同于 PSETEX key millisecond value。
+// NX：只在键不存在时，才对键进行设置操作。SET key value NX 效果等同于 SETNX key value。
+// zrank:返回排名,索引值 zrange:入参索引  zrangebyscore:入参分数
 func TestRedis(t *testing.T) {
 	ctx := context.Background()
-	rdb := redis.NewClient(&redis.Options{
+	rdb := goredis.NewClient(&goredis.Options{
 		Addr:     "localhost:6379",
 		Password: "", // 没有密码，默认值
 		DB:       0,  // 默认DB 0
@@ -277,5 +323,123 @@ func TestRedis(t *testing.T) {
 	for _, v := range result.Val() {
 		fmt.Println(v)
 	}
+}
+func TestRedisGo(t *testing.T) {
+	//1. 链接到 redis
+	conn, err := redis.Dial("tcp", "127.0.0.1:6379")
+	if err != nil {
+		fmt.Println("redis.Dial err=", err)
+		return
+	}
 
+	defer conn.Close() //关闭..
+	res, err := conn.Do("SET", "time31key", 1, "EX", 86400, "NX")
+	if err != nil {
+		fmt.Println("err1=", err)
+	}
+	fmt.Println("err1=", res)
+	fmt.Println(strings.Title("heer royal highness"))
+}
+
+func TestCtx(t *testing.T) {
+	//ctx := context.Background().
+}
+
+func fib(n int) int {
+	if n == 0 || n == 1 {
+		return n
+	}
+	return fib(n-2) + fib(n-1)
+}
+
+func BenchmarkFib(b *testing.B) {
+	//time.Sleep(time.Second * 3) // 模拟耗时准备任务
+	for n := 0; n < b.N; n++ {
+		fib(30) // run fib(30) b.N times
+	}
+}
+
+// 拼接字符串
+// + 和 fmt.Sprintf 的效率是最低的，和其余的方式相比，性能相差约 1000 倍，而且消耗了超过 1000 倍的内存。fmt.Sprintf 通常是用来格式化字符串的，一般不会用来拼接字符串。
+// strings.Builder 和 + 性能和内存消耗差距如此巨大，是因为两者的内存分配方式不一样。
+// + 拼接 2 个字符串时，生成一个新的字符串，那么就需要开辟一段新的空间，新空间的大小是原来两个字符串的大小之和
+// strings.Builder，bytes.Buffer，包括切片 []byte 的内存是以倍数申请的。例如，初始大小为 0，当第一次写入大小为 10 byte 的字符串时，则会申请大小为 16 byte 的内存（恰好大于 10 byte 的 2 的指数），第二次写入 10 byte 时，内存不够，则申请 32 byte 的内存，第三次写入内存足够，则不申请新的，
+func TestBuilderConcat(t *testing.T) {
+	var str strings.Builder
+	fmt.Println(str.Cap())
+	str.WriteString("adf")
+	fmt.Println(str.Cap())
+	str.WriteString("efe")
+	fmt.Println(str.Cap())
+	fmt.Println(str.String())
+}
+
+func Increase() func() int {
+	n := 0
+	return func() int {
+		n++
+		return n
+	}
+}
+
+func TestFunc(t *testing.T) {
+	in := Increase()
+	fmt.Println(in()) // 1
+	fmt.Println(in()) // 2
+	var s, sep string
+	for i := 1; i < len(os.Args); i++ {
+		s += sep + os.Args[i]
+		fmt.Println(os.Args[i])
+	}
+	fmt.Println(s)
+}
+
+// TrimSpace只能去掉两边的空格
+func TestStrconv(t *testing.T) {
+	tt := " 8"
+	tt = strings.TrimSpace(tt)
+	id, _ := strconv.Atoi(tt)
+	fmt.Println(id)
+	var runes []rune
+	for _, v := range "hello,世界" {
+		runes = append(runes, v)
+	}
+	fmt.Println(runes)
+}
+
+func TestGoFunc(t *testing.T) {
+	wg := sync.WaitGroup{}
+	wg.Add(30)
+	for i := 0; i < 10; i++ {
+		// 每一步循环至少间隔一秒，而这一秒的时间足够启动一个goroutine了，因此这样可以输出正确的结果。
+		// 在实际的工程中，不可能进行延时，这样就没有并发的优势，有两种方法：
+		// time.Sleep(1 * time.Second)
+		go func() {
+			// 大部分都是10
+			// 现象的原因在于闭包共享外部的变量i，注意到，每次调用go就会启动一个goroutine，这需要一定时间；
+			// 但是，启动的goroutine与循环变量递增不是在同一个goroutine，可以把i认为处于主goroutine中。启动一个goroutine的速度远小于循环执行的速度
+			// 所以即使是第一个goroutine刚起启动时，外层的循环也执行到了最后一步了。
+			// 由于所有的goroutine共享i，而且这个i会在最后一个使用它的goroutine结束后被销毁，所以最后的输出结果都是最后一步的i==10。
+			fmt.Println("A: ", i)
+			wg.Done()
+		}()
+	}
+	// 1:共享的环境变量作为函数参数传递
+	for i := 0; i < 10; i++ {
+		go func(i int) {
+			fmt.Println("B: ", i)
+			wg.Done()
+		}(i)
+	}
+
+	// 2:使用同名的变量保留当前的状态
+	for i := 0; i < 10; i++ {
+		i := i
+		go func() {
+			fmt.Println("C: ", i)
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
 }
