@@ -443,3 +443,13 @@ func TestGoFunc(t *testing.T) {
 
 	wg.Wait()
 }
+
+// 局部变量在delete所有元素后内存会释放，而全局变量只有在将map设置为nil后内存才会释放
+// 如果删除的元素是值类型，如int，float，bool，string以及数组和struct，map的内存不会自动释放
+// 如果删除的元素是引用类型，如指针，slice，map，chan等，map的内存会自动释放，但释放的内存是子元素应用类型的内存占用
+// sync.map开箱即用，不能赋值为nil
+// 初始值为:sync.Map{mu:sync.Mutex{state:0, sema:0x0}, read:atomic.Value{v:interface {}(nil)}, dirty:map[interface {}]*sync.entry(nil), misses:0}
+// sync.map的read部分没有改变，dirty部分在执行完delete操作之后被回收
+func TestMapDelete(t *testing.T) {
+
+}
